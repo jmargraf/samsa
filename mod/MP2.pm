@@ -6,7 +6,7 @@ use PDL;
 use Exporter 'import';
 
 our $VERSION = '1.00';
-our @EXPORT  = qw(MOints EMP2 dEMP2 MOints2 dEMBPT);
+our @EXPORT  = qw(MOints EMP2 dEMP2 MOints2 dEMBPT ENPT2);
 
 ##################################
 #  Calc MP2 IP correction (SpinOrbs)
@@ -129,7 +129,7 @@ sub dEMBPT{
                                    *$::SpinInts[$k][$l+1][$i][$a+1])/($Dijab);
           }
           if(($l!=$i) and ($k!=$i) and ($l!=$k) and ($a!=$i)){
-            print "$indk $indl $indi $inda\n";
+#            print "$indk $indl $indi $inda\n";
             $dEhhp_SSa[$indi/2] +=  $::SpinInts[$k][$l][$i][$a]
                                   *($::SpinInts[$k][$l][$i][$a]-$::SpinInts[$k][$l][$a][$i])/(8.0*$Dijab);
           }
@@ -149,6 +149,228 @@ sub dEMBPT{
   }
   close LOG;
 
+
+}
+
+##################################
+#  Calc Epstein-Nesbet PT2 Energy
+##################################
+sub ENPT2{
+  my @t1;
+  my @t2;
+
+  my $indi;
+  my $indj;
+  my $inda;
+  my $indb;
+
+  my $i;
+  my $j;
+  my $a;
+  my $b;
+  my @Dijab;
+  my @Dia;
+
+  my $iCC;
+  my $maxCC=10;
+
+  my $E_EN;
+
+  my $eVorder = zeroes(2*$::dim) ;
+  $eVorder = qsorti $::ES;
+
+  open(LOG,">>","$::name.out");
+  print LOG "\n";
+  print LOG "  running ENPT2\n";
+  close LOG;
+  print     "\n";
+  print     "  running ENPT2\n";
+
+# initialize t1 amplitudes
+  for($indi=0;$indi<2*$::nocc;$indi++){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda++){
+      $a = at($eVorder,$inda);
+      $t1[$i][$a] = 0.0;
+    }
+  }
+
+# initialize t2 amplitudes
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<2*$::nocc;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<2*$::dim;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $Dijab[$i][$j][$a][$b] = at($::ES,$i)+at($::ES,$j)-at($::ES,$a)-at($::ES,$b);
+          $t2[$i][$j][$a][$b] = ($::SpinInts[$i][$j][$a][$b]-$::SpinInts[$i][$j][$b][$a]);
+        }
+      }
+    }
+  }
+
+# MBPT2 vi t2 amplitudes
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/$Dijab[$i][$j][$a][$b];
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "    E_EN (MP2)  = $E_EN \n";
+
+# add -<ab||ab> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "    E_EN (-abab) = $E_EN \n";
+
+# add -<ij||ij> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (-ijij) = $E_EN \n";
+
+# add +<ai||ai> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]  
+                                         +$::SpinInts[$a][$i][$a][$i]-$::SpinInts[$a][$i][$i][$a]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (+aiai) = $E_EN \n";
+
+# add +<bi||bi> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]
+                                         +$::SpinInts[$a][$i][$a][$i]-$::SpinInts[$a][$i][$i][$a]  
+                                         +$::SpinInts[$b][$i][$b][$i]-$::SpinInts[$b][$i][$i][$b]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (+bibi) = $E_EN \n";
+
+# add +<aj||aj> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]
+                                         +$::SpinInts[$a][$i][$a][$i]-$::SpinInts[$a][$i][$i][$a]  
+                                         +$::SpinInts[$b][$i][$b][$i]-$::SpinInts[$b][$i][$i][$b]
+                                         +$::SpinInts[$a][$j][$a][$j]-$::SpinInts[$a][$j][$j][$a]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (+ajaj) = $E_EN \n";
+
+# add +<bj||bj> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]
+                                         +$::SpinInts[$a][$i][$a][$i]-$::SpinInts[$a][$i][$i][$a]
+                                         +$::SpinInts[$b][$i][$b][$i]-$::SpinInts[$b][$i][$i][$b]
+                                         +$::SpinInts[$a][$j][$a][$j]-$::SpinInts[$a][$j][$j][$a]  
+                                         +$::SpinInts[$b][$j][$b][$j]-$::SpinInts[$b][$j][$j][$b]);
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (+bjbj) = $E_EN \n";
 
 }
 

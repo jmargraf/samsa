@@ -44,6 +44,7 @@ sub dEMBPT{
   my $eVorder = zeroes($::dim) ;
   $eVorder = qsorti $::Eps;
 
+  # check bounds!
   for($indi=0; $indi<2*$::nocc; $indi=$indi+2) {
     $i = 2*at($eVorder,$indi/2);
     for($inda=2*$::nocc; $inda < 2*$::dim; $inda=$inda+2) {

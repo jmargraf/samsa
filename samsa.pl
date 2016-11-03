@@ -71,10 +71,12 @@ use CCSD;
   our @SpinInts;
 
 # SCF Matrices 
+  our @f_s;
   our $Fock;
   our $Coeff;
   our $Dens;
   our $Eps;
+  our $ES;
 
 # SCF options
   my $MaxIter = 1000;
@@ -216,6 +218,9 @@ use CCSD;
   dEMBPT();
 #  dEMP2();
 
+  FockSpin();
+
+  ECCSD();
 
 ##################################
 #  End Main Program   

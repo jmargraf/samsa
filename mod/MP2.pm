@@ -56,11 +56,12 @@ sub dEMBPT{
           $Dijab = (at($::Eps,$i/2) + at($::Eps,$j/2) - at($::Eps,$a/2) - at($::Eps,$b/2));
           $E2_OS  += ($::SpinInts[$i][$j+1][$a][$b+1]*$::SpinInts[$i][$j+1][$a][$b+1])/$Dijab;
 
-          $E2_SSa += $::SpinInts[$i][$j][$a][$b]*($::SpinInts[$i][$j][$a][$b]-$::SpinInts[$i][$j][$b][$a])/(8.0*$Dijab);
+          if($indb<$inda and $indj<$indi){
+            $E2_SSa += 0.5*$::SpinInts[$i][$j][$a][$b]*($::SpinInts[$i][$j][$a][$b]-$::SpinInts[$i][$j][$b][$a])/($Dijab);
 
-          $E2_SSb += $::SpinInts[$i+1][$j+1][$a+1][$b+1]
-                   *($::SpinInts[$i+1][$j+1][$a+1][$b+1]-$::SpinInts[$i+1][$j+1][$b+1][$a+1])/(8.0*$Dijab);
-
+            $E2_SSb += 0.5*$::SpinInts[$i+1][$j+1][$a+1][$b+1]
+                     *($::SpinInts[$i+1][$j+1][$a+1][$b+1]-$::SpinInts[$i+1][$j+1][$b+1][$a+1])/($Dijab);
+          }
         }
       }
     }
@@ -101,9 +102,9 @@ sub dEMBPT{
             $dEhpp_OS[$indi/2]  += -($::SpinInts[$i][$j+1][$a][$b+1]
                                     *$::SpinInts[$i][$j+1][$a][$b+1])/$Dijab;
           }
-          if(($b!=$i) and ($a!=$i)){
-            $dEhpp_SSa[$indi/2] +=  -$::SpinInts[$i][$j][$a][$b]
-                                   *($::SpinInts[$i][$j][$a][$b]-$::SpinInts[$i][$j][$b][$a])/(8.0*$Dijab);
+          if(($b!=$i) and ($a!=$i) and $b!=$a and $j!=$i ){
+            $dEhpp_SSa[$indi/2] +=  -0.5*$::SpinInts[$i][$j][$a][$b]
+                                   *($::SpinInts[$i][$j][$a][$b]-$::SpinInts[$i][$j][$b][$a])/($Dijab);
           }
         }
       }
@@ -127,7 +128,8 @@ sub dEMBPT{
             $dEhhp_OS[$indi/2]  += ($::SpinInts[$k][$l+1][$i][$a+1]
                                    *$::SpinInts[$k][$l+1][$i][$a+1])/($Dijab);
           }
-          if(($l!=$i) and ($k!=$i)){
+          if(($l!=$i) and ($k!=$i) and ($l!=$k) and ($a!=$i)){
+            print "$indk $indl $indi $inda\n";
             $dEhhp_SSa[$indi/2] +=  $::SpinInts[$k][$l][$i][$a]
                                   *($::SpinInts[$k][$l][$i][$a]-$::SpinInts[$k][$l][$a][$i])/(8.0*$Dijab);
           }

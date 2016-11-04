@@ -84,7 +84,7 @@ use CCSD;
   my $Dconv   = 1.0e-9;
   our $Damp   = 0.5;
   our $DoDamp = "on";
-  our $EHT    = "true";
+  our $EHT    = "false";
   our %Beta ;
   our %w;
   our $IntA;
@@ -220,7 +220,7 @@ use CCSD;
 
   FockSpin();
 
-  ECCSD();
+#  ECCSD();
 
   ENPT2();
 

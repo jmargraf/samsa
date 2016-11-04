@@ -254,6 +254,10 @@ sub RunPsi{
     print PSI "  basis sto-3g \n";
   }elsif($::basis_set eq "svp"){
     print PSI "  basis def2-SVP \n";
+  }elsif($::basis_set eq "tzp"){
+    print PSI "  basis def2-TZVP \n";
+  }elsif($::basis_set eq "qzp"){
+    print PSI "  basis def2-QZVP \n";
   }
   print PSI "  units bohr  \n";
   print PSI "}\n";

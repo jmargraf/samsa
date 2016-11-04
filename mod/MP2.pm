@@ -372,6 +372,32 @@ sub ENPT2{
 
   print "         (+bjbj) = $E_EN \n";
 
+# add +<bj||bj> to denominator
+  $E_EN = 0.0;
+  for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+    $i = at($eVorder,$indi);
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+      $a = at($eVorder,$inda);
+      for($indj=0;$indj<$indi;$indj=$indj+1){
+        $j = at($eVorder,$indj);
+        for($indb=2*$::nocc;$indb<$inda;$indb=$indb+1){
+          $b = at($eVorder,$indb);
+          $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
+                  ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]
+                                         -$::SpinInts[$i][$j][$i][$j]+$::SpinInts[$i][$j][$j][$i]
+                                         +$::SpinInts[$a][$i][$a][$i]-$::SpinInts[$a][$i][$i][$a]
+                                         +$::SpinInts[$b][$i][$b][$i]-$::SpinInts[$b][$i][$i][$b]
+                                  +0.555*($::SpinInts[$a][$j][$a][$j]-$::SpinInts[$a][$j][$j][$a]
+                                         +$::SpinInts[$b][$j][$b][$j]-$::SpinInts[$b][$j][$j][$b]));
+        }
+      }
+    }
+  }
+
+  $E_EN = $E_EN/4.0;
+
+  print "         (scale) = $E_EN \n";
+
 }
 
 ##################################

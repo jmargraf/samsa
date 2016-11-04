@@ -15,15 +15,54 @@ sub ECCSD{
   my @t1;
   my @t2;
 
+  my @Fae;
+  my @Fmi;
+  my @Fme;
+  my @Wmnij;
+  my @Wabef;
+  my @Wmbej;
+
+  my @tau_ijab;
+  my @tauS_ijab;
+
   my $indi;
   my $indj;
+  my $indk;
+  my $indl;
+  my $indm;
+  my $indn;
+
   my $inda;
   my $indb;
+  my $indc;
+  my $indd;
+  my $inde;
+  my $indf;
+
+  my $indp;
+  my $indq;
+  my $indr;
+  my $inds;
 
   my $i;
   my $j;
+  my $k;
+  my $l;
+  my $m;
+  my $n;
+
   my $a;
   my $b;
+  my $c;
+  my $d;
+  my $e;
+  my $f;
+
+  my $p;
+  my $q;
+  my $r;
+  my $s;
+
   my @Dijab;
   my @Dia;
 
@@ -47,6 +86,7 @@ sub ECCSD{
     $i = at($eVorder,$indi);
     for($inda=2*$::nocc;$inda<2*$::dim;$inda++){
       $a = at($eVorder,$inda);
+      $Dia[$i][$a] = at($::ES,$i)-at($::ES,$a);
       $t1[$i][$a] = 0.0;
     }
   }
@@ -88,6 +128,152 @@ sub ECCSD{
 
   print "    E2 = $E_CC \n";
 
+  for($iCC=0; $iCC<$maxCC;$iCC++){
+#    @tau_ijab;
+    for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+      $i = at($eVorder,$indi);
+      for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+        $a = at($eVorder,$inda);
+        for($indj=0;$indj<2*$::nocc;$indj=$indj+1){
+          $j = at($eVorder,$indj);
+          for($indb=2*$::nocc;$indb<2*$::dim;$indb=$indb+1){
+            $b = at($eVorder,$indb);
+            $tau_ijab[$i][$j][$a][$b] = $t2[$i][$j][$a][$b] 
+                                      + $t1[$i][$a]*$t1[$j][$b] 
+                                      - $t1[$i][$b]*$t1[$j][$a];      
+          }
+        }
+      }
+    }
+
+#    @tauS_ijab;
+    for($indi=0;$indi<2*$::nocc;$indi=$indi+1){
+      $i = at($eVorder,$indi);
+      for($inda=2*$::nocc;$inda<2*$::dim;$inda=$inda+1){
+        $a = at($eVorder,$inda);
+        for($indj=0;$indj<2*$::nocc;$indj=$indj+1){
+          $j = at($eVorder,$indj);
+          for($indb=2*$::nocc;$indb<2*$::dim;$indb=$indb+1){
+            $b = at($eVorder,$indb);
+            $tauS_ijab[$i][$j][$a][$b] = $t2[$i][$j][$a][$b]
+                                       +($t1[$i][$a]*$t1[$j][$b]
+                                       - $t1[$i][$b]*$t1[$j][$a])*0.5;
+#            print "$tauS_ijab[$i][$j][$a][$b]\n";
+          }
+        }
+      }
+    }   
+
+#    @Fae;
+    for($inda=2*$::nocc;$inda<2*$::dim;$inda++){
+      $a = at($eVorder,$inda);
+      for($inde=2*$::nocc;$inde<$inda;$inde++){
+        $e = at($eVorder,$inde);
+        if($a!=$e){
+          $Fae[$a][$e] = $::f_s[$a][$e];
+        }else{
+          $Fae[$a][$e] = 0.0;
+        }
+
+        for($indm=0;$indm<2*$::nocc;$indm++){
+          $m = at($eVorder,$indm);
+          $Fae[$a][$e] += 0.5*$::f_s[$m][$e]*$t1[$m][$a];
+        }
+
+        for($indm=0;$indm<2*$::nocc;$indm++){
+          $m = at($eVorder,$indm);
+          for($indf=2*$::nocc;$indf<2*$::dim;$indf++){
+            $f = at($eVorder,$indf);
+            $Fae[$a][$e] += $t1[$m][$f]*
+                           ($::SpinInts[$m][$a][$f][$e]-$::SpinInts[$m][$a][$e][$f]);
+          }
+        }
+
+        for($indm=0;$indm<2*$::nocc;$indm++){
+          $m = at($eVorder,$indm);
+          for($indn=0;$indn<$indn;$indn++){
+            $n = at($eVorder,$indn);
+            for($indf=2*$::nocc;$indf<2*$::dim;$indf++){
+              $f = at($eVorder,$indf);
+
+              $Fae[$a][$e] += 0.5*$::tauS_ijab[$m][$n][$a][$f]*
+                            ($::SpinInts[$m][$n][$e][$f]-$::SpinInts[$m][$n][$f][$e]);
+
+            }
+          }
+        }
+
+      }
+    }
+#    @Fmi;
+    for($indm=0;$indm<2*$::nocc;$indm++){
+      $m = at($eVorder,$indm);
+      for($indi=0;$indi<$indm;$indi++){
+        $i = at($eVorder,$indi);
+        if($m!=$i){
+          $Fmi[$m][$i] = $::f_s[$m][$i];
+        }else{
+          $Fmi[$m][$i] = 0.0;
+        }
+
+        for($inde=2*$::nocc;$inde<2*$::dim;$inde++){
+          $e = at($eVorder,$inde);
+          $Fmi[$m][$i] += 0.5*$::f_s[$m][$e]*$t1[$i][$e];
+        }
+
+        for($indn=0;$indn<$indm;$indn++){
+          $n = at($eVorder,$indn);
+          for($inde=2*$::nocc;$inde<2*$::dim;$inde++){
+            $e = at($eVorder,$inde);
+            $Fmi[$m][$i] += $t1[$n][$e]*
+                           ($::SpinInts[$m][$n][$i][$e]-$::SpinInts[$m][$n][$e][$i]);
+          }
+        }
+
+        for($indn=0;$indn<$indm;$indn++){
+          $n = at($eVorder,$indn);
+          for($inde=2*$::nocc;$inde<2*$::dim;$inde++){
+            $e = at($eVorder,$inde);
+            for($indf=2*$::nocc;$indf<$inde;$indf++){
+              $f = at($eVorder,$indf);
+#              $Fmi[$m][$i] += 0.5*$::tauS_ijab[$i][$n][$e][$f]*
+#                             ($::SpinInts[$m][$n][$e][$f]-$::SpinInts[$m][$n][$f][$e]);
+
+            }
+          }
+        }
+
+      }
+    }
+
+#    @Fme;
+    for($indm=0;$indm<2*$::nocc;$indm++){
+      $m = at($eVorder,$indm);
+      for($inde=2*$::nocc;$inde<2*$::dim;$inde++){
+        $e = at($eVorder,$inde);
+
+        $Fme[$m][$e] = $::f_s[$m][$e];
+
+        for($indn=0;$indn<$indm;$indn++){
+          $n = at($eVorder,$indn);
+          for($indf=2*$::nocc;$indf<$inde;$indf++){
+            $f = at($eVorder,$indf);
+            $Fme[$m][$e] = $t1[$n][$f]*
+                          ($::SpinInts[$m][$n][$e][$f]-$::SpinInts[$m][$n][$f][$e]);   
+          }
+        }
+
+      }
+    }
+
+#    @Wmnij;
+
+#    @Wabef;
+
+#    @Wmbej;
+
+  }
+
 }
 
 ##################################
@@ -118,6 +304,8 @@ sub FockSpin{
 #       $::f_s[$p][$q] += $::SpinInts[$p][$m][$q][$m];
 #        $::f_s[$p+1][$q+1] = $::f_s[$p][$q];
 #     }
+      $::f_s[$p][$q+1] = $::f_s[$p][$q];
+      $::f_s[$p+1][$q] = $::f_s[$p][$q];
       $::f_s[$p+1][$q+1] = $::f_s[$p][$q];
     }
   }

@@ -105,6 +105,8 @@ sub FtoMO{
 
 # Orthogonalize Fockian
 #  $::Fock = transpose($::S12) x $::Fock x $::S12; # $Temp;
+  print "Before: \n";
+  print $::Fock;
 
 # Transform to MO basis  
   $::Fock = transpose($::Coeff) x $::Fock x $::Coeff;
@@ -136,6 +138,9 @@ sub FtoAO{
 
 # Transform to AO basis  
   $::Fock = $::Sij x $::Coeff x $::Fock x transpose($::Coeff) x $::Sij;
+
+  print "After: \n";
+  print $::Fock;
 
 #  open(LOG,">>","$::name.out");
 #  for($i=0;$i<$::dim;$i++){
@@ -186,7 +191,7 @@ sub EHT {
                               ){
       next;
     }
-    print "$basi \n";
+#    print "$basi \n";
     $ph1  = index2d($::Fock,$i,$i);
     $ph1 .= $K*at($::Sij,$i,$i)*
            ($H{$basi}+$H{$basi})/2.0 ;
@@ -213,12 +218,23 @@ sub DiaF {
     $::Coeff = zeroes($::dim,$::dim);
     $::Eps   = zeroes($::dim);
     $::Dens  = zeroes($::dim,$::dim);
+    if($::UHF==1){
+      $::FockB = zeroes($::dim,$::dim) ;
+      $::CoeffB = zeroes($::dim,$::dim);
+      $::EpsB   = zeroes($::dim);
+      $::DensB  = zeroes($::dim,$::dim);
+    }
 
     $::Fock  .= $::Hcore;
     if($::EHT eq "true"){
       print LOG "    Hueckel\n";
       EHT();
     }
+
+    if($::UHF==1){
+      $::FockB=$::Fock;
+    }
+
     print LOG "    ... done\n";
     print LOG "\n";
   }
@@ -227,6 +243,9 @@ sub DiaF {
 #  gemm($::Fock, 0, 0, $::S12, pdl(1.0), pdl(0.0), $Temp);
 #  gemm($::S12, 1, 0, $Temp, pdl(1.0), pdl(0.0), $::Coeff);
   $::Coeff = transpose($::S12) x $::Fock x $::S12; # $Temp;
+  if($::UHF==1){
+    $::CoeffB = transpose($::S12) x $::FockB x $::S12; # $Temp;
+  }
 
 # Diagonalize Fock Matrix
 #   my $ifail = zeroes($::dim);
@@ -236,11 +255,18 @@ sub DiaF {
 #   print  "Info: $info\n";
 #   ($::Eps,$::Coeff) = eigsys($::Coeff);
   ($::Coeff,$::Eps) = eigens_sym $::Coeff ;
+  if($::UHF==1){
+    ($::CoeffB,$::EpsB) = eigens_sym $::CoeffB ;
+  }
+
 
 # Transform back into original basis
 #  $Temp .= $::Coeff;
 #  gemm($::S12, 0, 0, $Temp, pdl(1.0), pdl(0.0), $::Coeff);
   $::Coeff = $::S12 x $::Coeff;
+  if($::UHF==1){
+    $::CoeffB = $::S12 x $::CoeffB;
+  }
 
   if($::Debug){
     print LOG "  Transformed Fockian:\n";
@@ -279,13 +305,24 @@ sub CalcDens {
   my $ph2;
   my $ind;
   my $Densold = zeroes($::dim,$::dim);
+  my $DensoldB = zeroes($::dim,$::dim);
   
   $::Drmsd = 0.0;
   $Densold = $::Dens;
   $::Dens  = zeroes($::dim,$::dim);
+  if($::UHF==1){
+    $::DrmsdB = 0.0;
+    $DensoldB = $::DensB;
+    $::DensB  = zeroes($::dim,$::dim);
+  }
 
   my $eVorder = zeroes($::dim) ;
+  my $eVorderB = zeroes($::dim) ;
   $eVorder = qsorti $::Eps;
+  if($::UHF==1){
+    $eVorderB = qsorti $::EpsB;
+  }
+
 
   for($i=0;$i<$::dim;$i++){
     for($j=0;$j<=$i;$j++){
@@ -300,8 +337,26 @@ sub CalcDens {
       $::Drmsd = $::Drmsd + (at($::Dens,$i,$j)-at($Densold,$i,$j))**2;
     }
   } 
+  if($::UHF==1){
+    for($i=0;$i<$::dim;$i++){
+      for($j=0;$j<=$i;$j++){
+        $ph1  = index2d($::DensB,$i,$j);
+        $ph1 .= 0.0;
+        for($k=0;$k<$::noccB;$k++){
+          $ind = at($eVorderB,$k);
+          $ph1 .= $ph1 + index2d($::CoeffB,$ind,$i)*index2d($::CoeffB,$ind,$j) ;
+        }
+        $ph2  = index2d($::DensB,$j,$i);
+        $ph2 .= $ph1;
+        $::DrmsdB = $::DrmsdB + (at($::DensB,$i,$j)-at($DensoldB,$i,$j))**2;
+      }
+    } 
+  }
 
   $::Drmsd = sqrt($::Drmsd);
+  if($::UHF==1){
+    $::DrmsdB = sqrt($::DrmsdB);
+  }
 
   if($::Debug){
     open(LOG,">>","$::name.out");
@@ -331,14 +386,33 @@ sub CalcEnergy {
                           + index2d($::Fock,$i,$j));
     }
   }
+  if($::UHF==1){
+    $::Eelec  = 0.0;
+    $::Etotal = 0.0;
+    for($i=0;$i<$::dim;$i++){
+      for($j=0;$j<$::dim;$j++){
+        $::Eelec = $::Eelec + index2d($::Dens,$i,$j)
+                            *(index2d($::Hcore,$i,$j)
+                            + index2d($::Fock,$i,$j))*0.5
+                            + index2d($::DensB,$i,$j)
+                            *(index2d($::Hcore,$i,$j)
+                            + index2d($::FockB,$i,$j))*0.5;
+      }
+    }
+  }
 
   $::Etotal =  $::Eelec + $::Enuclear;
   $::dE = $::Etotal - $::Eold;
 
 
   open(LOG,">>","$::name.out");
-  printf LOG "    SCF   %2d   %.8f   %.8f   %.8f   %.8f  \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd ;
-  printf     "    SCF   %2d   %.8f   %.8f   %.8f   %.8f  \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd ;
+  if($::UHF==0){
+    printf LOG "    SCF   %2d   %.8f   %.8f   %.8f   %.8f  \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd ;
+    printf     "    SCF   %2d   %.8f   %.8f   %.8f   %.8f  \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd ;
+  }elsif($::UHF==1){
+    printf LOG "    SCF   %2d   %.8f   %.8f   %.8f   %.8f   %.8f \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd,$::DrmsdB ;
+    printf     "    SCF   %2d   %.8f   %.8f   %.8f   %.8f   %.8f \n",$::iSCF,$::Eelec,$::Etotal,$::dE,$::Drmsd,$::DrmsdB ;
+  }
   close LOG;
 }
 
@@ -358,11 +432,15 @@ sub CalcFock {
   my $ikjl;
   my $ph1 = null;
   my $ph2;
+  my $ph1B = null;
+  my $ph2B;
   my $Jint;
   my $Kint;
   my $Cint;
   my $Dkl;
+  my $DklB;
   my $Fockold = zeroes($::dim,$::dim);
+  my $FockoldB = zeroes($::dim,$::dim);
   my $betaeff;
   my $weff;
 
@@ -370,18 +448,31 @@ sub CalcFock {
 #  print LOG "  Fock Matrix SCF$::iSCF:\n";
 
   $Fockold .= $::Fock;
-  $::Fock = zeroes($::dim,$::dim);
-  $::Fock .= $::Hcore;
+  $::Fock   = zeroes($::dim,$::dim);
+  $::Fock  .= $::Hcore;
+  if($::UHF==1){
+    $FockoldB .= $::FockB;
+    $::FockB   = zeroes($::dim,$::dim);
+    $::FockB  .= $::Hcore;
+  }
   $ph1 =0.0;
   $ph2 =0.0;
+  if($::UHF==1){
+    $ph1B =0.0;
+    $ph2B =0.0;
+  }
+
 
   for($i=0;$i<$::dim;$i++){
     for($j=0;$j<$::dim;$j++){
       $ph1 =0.0;
       $ph2  = 0.0;
       $ph1  = index2d($::Fock,$i,$j);
-#      $ph1  = at($::Fock,$i,$j);
-#      $ph1 = $::Fock($i,$j);
+      if($::UHF==1){
+        $ph1B = 0.0;
+        $ph2B = 0.0;
+        $ph1B = index2d($::FockB,$i,$j);
+      }
       
       for($k=0;$k<$::dim;$k++){
         for($l=0;$l<$::dim;$l++){
@@ -415,10 +506,30 @@ sub CalcFock {
 #          $Jint = 2.0;
 #         $Kint = 0.0;
           $Dkl  = at($::Dens,$k,$l);
+          if($::UHF==1){
+            $DklB  = at($::DensB,$k,$l);
+          }
 
 #          print "$i $j $k $l $ijkl $Jint $ikjl $Kint  \n";
 
-          $ph2 += $Dkl*(2.0*$Jint - $Kint);
+          $Cint = 1.0;
+          if($::IntA==17){
+            $Cint = 1.0 + (($::Beta{$::bastyp[$i]}+$::Beta{$::bastyp[$j]})/2.0)* 
+#                           at($::Dens,$i,$j)*  
+                           at($::Sij,$i,$j)**3;
+          }
+          if($::IntA==19){
+            $Cint = 1.0 + (($::Beta{$::bastyp[$i]}+$::Beta{$::bastyp[$j]})/2.0)*
+#                           at($::Dens,$i,$j)*  
+                           at($::Sij,$i,$j);
+          }
+
+          if($::UHF==0){
+            $ph2 += $Dkl*(2.0*$Jint - $Kint) * $Cint;
+          }elsif($::UHF==1){
+            $ph2  += ($Dkl*$Jint + $DklB*$Jint - $Dkl*$Kint)  * $Cint;
+            $ph2B += ($Dkl*$Jint + $DklB*$Jint - $DklB*$Kint) * $Cint;
+          }
 
 #          $ph1 .= $ph1 + $Dkl*(2.0*$Jint - $Kint);
 #          print "$ph1\n";
@@ -477,12 +588,28 @@ sub CalcFock {
       }else{
         $Cint    = 0.0;
       }
+
       $ph1 .= $ph1 + $ph2 + $Cint; 
+      if($::UHF==1){
+        $ph1B .= $ph1B + $ph2B + $Cint;
+      }
+
+      if($::IntA==18){
+        $Cint = 1.0 - (($::Beta{$::bastyp[$i]}+$::Beta{$::bastyp[$j]})/2.0)*
+                       at($::Sij,$i,$j);
+        $ph1 .= $ph1*$Cint;
+      }
+
+      
+
 #     print "$i $j  $ph2 \n";
     }
   }
 
   $::Fock .= $::Damp*$::Fock + (1.0-$::Damp)*$Fockold; 
+  if($::UHF==1){
+    $::FockB .= $::Damp*$::FockB + (1.0-$::Damp)*$FockoldB;
+  }
 
   if($::Debug){
     open(LOG,">>","$::name.out");
@@ -502,6 +629,7 @@ sub CalcFock {
 #  Calculate Correlation Potential
 ##################################
 sub CalcCorP {
+# TODO UHF
   my $i;
   my $j;
   my $k;

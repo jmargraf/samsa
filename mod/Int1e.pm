@@ -99,9 +99,9 @@ sub Overlap{
   }
 
   close(IN);
-  if($::Debug){
+#  if($::Debug){
   print LOG $::Sij ;
-  }
+#  }
   print LOG " \n";
 
   close LOG;
@@ -254,6 +254,8 @@ sub RunPsi{
     print PSI "  basis sto-3g \n";
   }elsif($::basis_set eq "svp"){
     print PSI "  basis def2-SVP \n";
+  }elsif($::basis_set eq "po2"){
+    print PSI "  basis 6-311G** \n";
   }elsif($::basis_set eq "tzp"){
     print PSI "  basis def2-TZVP \n";
   }elsif($::basis_set eq "qzp"){

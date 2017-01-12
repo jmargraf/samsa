@@ -175,6 +175,7 @@ sub ENPT2{
   my $maxCC=10;
 
   my $E_EN;
+  my $temp;
 
   my $eVorder = zeroes(2*$::dim) ;
   $eVorder = qsorti $::ES;
@@ -243,6 +244,8 @@ sub ENPT2{
           $b = at($eVorder,$indb);
           $E_EN += $t2[$i][$j][$a][$b]*$t2[$i][$j][$a][$b]/
                   ($Dijab[$i][$j][$a][$b]-$::SpinInts[$a][$b][$a][$b]+$::SpinInts[$a][$b][$b][$a]);
+          $temp = $::SpinInts[$a][$b][$a][$b]-$::SpinInts[$a][$b][$b][$a];
+#          print "$temp \n";
         }
       }
     }

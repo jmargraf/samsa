@@ -30,10 +30,16 @@ use CCSD;
   our $dim2;
   our $nel;
   our $nocc;
+  our $noccB;
   our @basis;
   our @bastyp;
   our @basat;
   our @PopQ;
+  our @PopA;
+  our @PopB;
+  our $calctype = "rhf";
+  our $UHF = 0;
+  our $doMP2 = 0;
   our $Debug = 0;
   our $Res =1;
   our @Arad;
@@ -53,6 +59,7 @@ use CCSD;
   our $Eold;
   our $dE=0.0;
   our $Drmsd;
+  our $DrmsdB;
 
 # 1el Integrals
   our $Sij;
@@ -73,9 +80,13 @@ use CCSD;
 # SCF Matrices 
   our @f_s;
   our $Fock;
+  our $FockB;
   our $Coeff;
+  our $CoeffB;
   our $Dens;
+  our $DensB;
   our $Eps;
+  our $EpsB;
   our $ES;
 
 # SCF options
@@ -106,6 +117,23 @@ use CCSD;
   if($DoDamp eq "off"){
     $Damp = 1.0;
   }
+
+#  if(@ARGV > 1) {
+#    $calctype = $ARGV[1];   
+#    if($calctype eq "rhf"){
+#      $UHF=0;
+#      $doMP2=0;
+#    }elsif($calctype eq "uhf"){
+#      $UHF=1;
+#      $doMP2=0;
+#    }elsif($calctype eq "rmp2"){
+#      $UHF=0;
+#      $doMP2=1;    
+#    }elsif($calctype eq "ump2"){
+#      $UHF=1;
+#      $doMP2=1;    
+#    }
+#  }
 
   if(@ARGV > 1) {
     $IntA       = $ARGV[1];
@@ -199,30 +227,32 @@ use CCSD;
   PrintEigen();
 
 # Run MO integral transformation and calculate MP2 energy
-  $starttime = time;
-  MOints();
-  EMP2();
-  $endtime = time;
-  $time = $endtime - $starttime;
+  if($doMP2==1){
+    $starttime = time;
+    MOints();
+    EMP2();
+    $endtime = time;
+    $time = $endtime - $starttime;
 
-  print "    MP2 time = $time s\n";
-  open(LOG,">>","$name.out");
-  print LOG "    MP2 time = $time s\n";
-  print LOG "\n";
-  close LOG;
+    print "    MP2 time = $time s\n";
+    open(LOG,">>","$name.out");
+    print LOG "    MP2 time = $time s\n";
+    print LOG "\n";
+    close LOG;
+  }
 
 # Transform MOs to Spin Integrals
-  SpinInts();
+#  SpinInts();
 
 # Calculate PT2 IP corrections
-  dEMBPT();
+#  dEMBPT();
 #  dEMP2();
 
-  FockSpin();
+#  FockSpin();
 
 #  ECCSD();
 
-  ENPT2();
+#  ENPT2();
 
 ##################################
 #  End Main Program   

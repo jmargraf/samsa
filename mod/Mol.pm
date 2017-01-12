@@ -29,6 +29,24 @@ sub readxyz{
   $::charge = $temp[0];
   $::mult   = $temp[1];
 
+  if($temp[2]) {
+    $::calctype = $temp[2];   
+    if($::calctype eq "rhf"){
+      $::UHF=0;
+      $::doMP2=0;
+    }elsif($::calctype eq "uhf"){
+      $::UHF=1;
+      $::doMP2=0;
+    }elsif($::calctype eq "rmp2"){
+      $::UHF=0;
+      $::doMP2=1;    
+    }elsif($::calctype eq "ump2"){
+      $::UHF=1;
+      $::doMP2=1;    
+    }
+  }
+
+
 # Read  $natoms coordinates to xyz
   for($m=1;$m<=$::natoms;$m++){
     $scratch=<IN> ;
@@ -115,6 +133,7 @@ sub dimensions{
   my $kl;
   my $ijkl;
   my $core;
+  my $even;
 
 # Dimension of 1e Matrices
   $::dim = 0;
@@ -135,6 +154,14 @@ sub dimensions{
         $::dim=$::dim+14;
       }
     }  
+  }elsif($::basis_set eq "po2"){
+    for($i=1;$i<=$::natoms;$i++){
+      if($::atom[$i] eq "H" or $::atom[$i] eq "He"){
+        $::dim=$::dim+4;
+      }else{
+        $::dim=$::dim+18;
+      }
+    }
   }elsif($::basis_set eq "tzp"){
     for($i=1;$i<=$::natoms;$i++){
       if($::atom[$i] eq "H" or $::atom[$i] eq "He"){
@@ -174,13 +201,45 @@ sub dimensions{
 # Number of electrons
   $::nel = 0;
   $::nocc = 0;
+  $::noccB = 0;
   for($i=1;$i<=$::natoms;$i++){
     $core = coreq($::atom[$i]);
     $::nel = $::nel + $core;  
   }
+  $::nel += -$::charge;
 
-  $::nocc = $::nel/2;
+  if($::UHF==0){
+    $::nocc = $::nel/2;
+  }elsif($::UHF==1){
+  # check mult and nel
+    $even=0;
+    print "Electrons: $::nel / Charge: $::charge \n";
+    if($::nel % 2 == 0){
+      $even=1;
+      if($::mult % 2 == 0){
+        print "!Error! Even number of electrons and mult $::mult is impossible\n";
+        die;
+      }
+    }else{
+      if($::mult % 2 == 1){
+        print "!Error! Unven number of electrons and mult $::mult is impossible\n";
+        die;
+      }
+    }
+  # dist electrons
+    if($even==1){
+      $::nocc  = $::nel/2;
+      $::noccB = $::nocc;
+      $::nocc  = $::nocc + ($::mult-1)/2;
+      $::noccB = $::noccB - ($::mult-1)/2;
+    }else{
+      $::nocc  = int($::nel/2)+1;
+      $::noccB = int($::nel/2);
+      $::nocc  = $::nocc + ($::mult-2)/2;
+      $::noccB = $::noccB - ($::mult-2)/2;
+    }
 
+  }
   $j = -1;
   open(LOG,">>","$::name.out");
 
@@ -817,7 +876,12 @@ sub dimensions{
   print LOG "  1e Matrix dimension = $::dim \n";
   print LOG "  No of unique 2e int = $::dim2 \n";
   print LOG "  No of electrons     = $::nel \n";
-  print LOG "  No of occ orbitals  = $::nocc \n";
+  if($::UHF==0){
+    print LOG "  No of occ orbitals  = $::nocc \n";
+  }elsif($::UHF==1){
+    print LOG "  No of occ alpha orbitals  = $::nocc \n";
+    print LOG "  No of occ beta  orbitals  = $::noccB \n";
+  }
   print LOG "\n";
   close LOG;
 }

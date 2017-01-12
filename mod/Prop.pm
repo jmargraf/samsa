@@ -58,15 +58,17 @@ sub Mulliken{
   print LOG "\n";
   print LOG "\n";
 
-  print LOG "  Mulliken Spin Densities: \n";
-  print LOG "\n";
+  if($::UHF==1){
 
-  for($i=1;$i<=$::natoms;$i++){
-    $::PopS[$i] = $::PopA[$i] - $::PopB[$i]  ;
-    print LOG "    $::atom[$i]$i   $::PopS[$i]  \n";
+    print LOG "  Mulliken Spin Densities: \n";
+    print LOG "\n";
+
+    for($i=1;$i<=$::natoms;$i++){
+      $::PopS[$i] = $::PopA[$i] - $::PopB[$i]  ;
+      print LOG "    $::atom[$i]$i   $::PopS[$i]  \n";
+    }
+    print LOG "\n";
   }
-  print LOG "\n";
-
 
 
 #  print LOG "  Density Matrix: \n";

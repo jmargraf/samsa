@@ -338,7 +338,7 @@ sub RunPsi{
 
   close PSI;
 
-  `Psi4 $::name\_PSI4.inp $::name\_PSI4.out > ints`;
+  `psi4 $::name\_PSI4.inp $::name\_PSI4.out > ints`;
 
   open(LOG,">>","$::name.out");
   print LOG "    ... done  \n";

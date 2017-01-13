@@ -46,6 +46,9 @@ sub readxyz{
     }
   }
 
+  if($temp[3]) {
+    if($temp[3] eq "eh") {$::EHT  = "true"}
+  }
 
 # Read  $natoms coordinates to xyz
   for($m=1;$m<=$::natoms;$m++){

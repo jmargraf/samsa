@@ -213,6 +213,7 @@ sub DiaF {
 
 # Initial Guess
   if($::iSCF<1){
+    my $pert = randsym($::dim,$::dim) x 0.01 ;
     print LOG "  Initial Guess:\n";
     $::Fock  = zeroes($::dim,$::dim);
     $::Coeff = zeroes($::dim,$::dim);
@@ -223,6 +224,7 @@ sub DiaF {
       $::CoeffB = zeroes($::dim,$::dim);
       $::EpsB   = zeroes($::dim);
       $::DensB  = zeroes($::dim,$::dim);
+      
     }
 
     $::Fock  .= $::Hcore;
@@ -232,8 +234,8 @@ sub DiaF {
     }
 
     if($::UHF==1){
-      $::FockB=$::Fock;
-    }
+      $::FockB=$::Fock+$pert;
+    }#
 
     print LOG "    ... done\n";
     print LOG "\n";

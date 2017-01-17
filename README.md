@@ -1,1 +1,1 @@
-SAMSA SCF-code
+SAMSA SCF-code (perl version)
